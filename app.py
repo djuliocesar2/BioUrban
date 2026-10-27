@@ -12,6 +12,11 @@ import time
 import random
 import json
 import requests
+import os
+from dotenv import load_dotenv
+
+# Carrega as variáveis de ambiente do arquivo .env[cite: 4]
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///biourban_pro.db'
@@ -29,7 +34,9 @@ login_manager.init_app(app)
 # ==============================================================================
 # VARIÁVEIS GLOBAIS DE CLIMA E CONTROLE
 # ==============================================================================
-OPENWEATHER_API_KEY = "SUA_CHAVE_AQUI" # Ou utilize os.environ.get('OPENWEATHER_API_KEY')
+# Carrega a chave de forma segura a partir do .env[cite: 4]
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
 CLIMA_ATUAL = {
     "prob_chuva": 0.0,
     "volume_chuva": 0.0,
