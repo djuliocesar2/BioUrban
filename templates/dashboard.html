@@ -57,7 +57,7 @@
     <div style="background:white; padding:35px; border-radius:20px; width:400px; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
         <h3 style="margin-top:0; color: #2d3436;">Nova Unidade de Cultivo</h3>
         <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">Preencha os dados da sua nova área de plantio.</p>
-        <form action="/add_fazenda" method="POST">
+        <form action="{{ url_for('add_fazenda') }}" method="POST">
             <div style="margin-bottom:15px;">
                 <label style="display:block; font-size:0.8rem; margin-bottom:5px; color:#666; font-weight: 600;">Nome da Unidade</label>
                 <input type="text" name="nome" placeholder="Ex: Estufa Norte" required style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; font-size: 0.9rem;">

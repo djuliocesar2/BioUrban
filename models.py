@@ -35,6 +35,10 @@ class Hortalica(db.Model):
     # Guarda a umidade atual (em %) desta planta específica
     umidade_atual = db.Column(db.Float, nullable=True, default=0.0)
     
+    # Guarda a faixa de umidade ideal obtida via IA
+    umidade_min = db.Column(db.Float, default=40.0)
+    umidade_max = db.Column(db.Float, default=70.0)
+    
     # Guarda a categoria hídrica (ex: 'hortalica', 'arida', 'tropical')
     categoria_hidrica = db.Column(db.String(30), default="hortalica")
     

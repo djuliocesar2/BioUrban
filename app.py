@@ -1,31 +1,98 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from flask_migrate import Migrate
-from models import db, Usuario, Fazenda, Hortalica, RegistroHidrico
-from datetime import datetime
+import os
+import json
 import csv
 import io
-import numpy as np
-import pandas as pd
-from sklearn.linear_model import LinearRegression
 import threading
 import time
 import random
-import json
 import requests
-import os
 import xml.etree.ElementTree as ET
+import unicodedata
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from flask_migrate import Migrate
 from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente do arquivo .env
+# 1. Carrega as variáveis do .env PRIMEIRO
 load_dotenv()
+
+from groq import Groq
+from models import db, Usuario, Fazenda, Hortalica, RegistroHidrico
+
+# 2. Inicializa o cliente da Groq
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+def remover_acentos(texto):
+    """Remove acentos, cedilhas e caracteres especiais de uma string."""
+    if not texto:
+        return ""
+    texto_nfkd = unicodedata.normalize('NFD', texto)
+    return ''.join(c for c in texto_nfkd if unicodedata.category(c) != 'Mn').lower().strip()
+
+def obter_limites_umidade_ia(nome_hortalica):
+    """
+    Consulta a API da Groq descobrindo dinamicamente os modelos ativos na conta.
+    Evita erros de modelos descontinuados ou indisponíveis (400/404).
+    """
+    prompt_system = (
+        "Você é um agrônomo. Responda EXCLUSIVAMENTE um objeto JSON válido "
+        "no formato: {\"umidade_min\": valor_int, \"umidade_max\": valor_int} sem nenhum texto adicional."
+    )
+    prompt_user = f"Faixa ideal de umidade do solo (%) para a planta: '{nome_hortalica.strip()}'"
+
+    # 1. Obtém dinamicamente os modelos de texto gerais (exclui guardrails e modelos de áudio)
+    try:
+        models_list = groq_client.models.list()
+        modelos_ativos = [
+            m.id for m in models_list.data 
+            if not any(x in m.id.lower() for x in ["whisper", "safetensors", "vision", "guard", "orpheus"])
+        ]
+        print(f"-> [Groq API] Modelos de chat ativos detectados: {modelos_ativos}")
+    except Exception as e:
+        print(f"-> [Groq API ERRO] Falha ao listar modelos: {e}")
+        modelos_ativos = ["allam-2-7b", "openai/gpt-oss-20b"]
+
+    # 2. Testa os modelos disponíveis na ordem até obter a resposta JSON
+    for modelo in modelos_ativos:
+        try:
+            print(f"-> [Groq API] Consultando modelo '{modelo}' para '{nome_hortalica}'...")
+            response = groq_client.chat.completions.create(
+                model=modelo,
+                messages=[
+                    {"role": "system", "content": prompt_system},
+                    {"role": "user", "content": prompt_user}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.1,
+                timeout=4.0
+            )
+
+            dados = json.loads(response.choices[0].message.content)
+            min_val = float(dados.get("umidade_min", 40))
+            max_val = float(dados.get("umidade_max", 70))
+            print(f"-> [Groq API] Sucesso com '{modelo}'! Faixa obtida: {min_val}% a {max_val}%")
+            return min_val, max_val
+
+        except Exception as e:
+            print(f"-> [Groq API] Modelo '{modelo}' falhou: {e}")
+
+    print("-> [Groq API ERRO] Nenhum modelo respondeu. Usando faixa de segurança (40% - 70%).")
+    return 40.0, 70.0
+
+# 3. Configuração da Aplicação Flask
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///biourban_pro.db'
 app.config['SECRET_KEY'] = 'chave-segura-biourban-2026'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# INICIALIZAÇÃO DO FLASK-MIGRATE
+# INICIALIZAÇÃO DO FLASK-MIGRATE E LOGIN
 migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -33,12 +100,13 @@ login_manager.init_app(app)
 
 # ==============================================================================
 # VARIÁVEIS GLOBAIS DE CLIMA E CONTROLE
-# =========================================================================================
+# ==============================================================================
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 CLIMA_ATUAL = {
     "prob_chuva": 0.0,
     "volume_chuva": 0.0,
     "temperatura": 25.0
+
 }
 ID_FAZENDA_PADRAO = 1
 sensor_fisico_ativo = False
@@ -350,43 +418,38 @@ def ver_fazenda(id):
     if todos_recentes:
         stats['media_h2o'] = round(
             sum(r.nivel_porcentagem for r in todos_recentes) / len(todos_recentes), 1
-    )
+        )
         media_val = stats['media_h2o']
     else:
         stats['media_h2o'] = 0
         media_val = 0
         
-        categoria_foco = "hortalica"
-        nome_foco_str = "Planta Monitorada"
-        if PLANTA_FOCO_ID:
-            p_foco = db.session.get(Hortalica, PLANTA_FOCO_ID)
-            if p_foco:
-                categoria_foco = p_foco.categoria_hidrica or "hortalica"
-                nome_foco_str = p_foco.nome
-        
-        if categoria_foco == 'arida':
-            if media_val < 5:
-                stats['insight_h2o'] = {"tipo": "perigo", "msg": f"{nome_foco_str} (Árida): Nível muito baixo ({media_val}%). Considere uma rega ligeira."}
-            elif media_val > 40:
-                stats['insight_h2o'] = {"tipo": "alerta", "msg": f"{nome_foco_str} (Árida): Nível elevado ({media_val}%). Risco de apodrecimento das raízes, reduza a rega."}
-            else:
-                stats['insight_h2o'] = {"tipo": "sucesso", "msg": f"{nome_foco_str} (Árida): Nível hídrico perfeito ({media_val}%). Condições ideais para suculentas/cactos."}
-                
-        elif categoria_foco == 'tropical':
-            if media_val < 50:
-                stats['insight_h2o'] = {"tipo": "perigo", "msg": f"{nome_foco_str} (Tropical): Nível baixo ({media_val}%). Aumente a irrigação urgentemente."}
-            elif media_val > 90:
-                stats['insight_h2o'] = {"tipo": "alerta", "msg": f"{nome_foco_str} (Tropical): Nível muito alto ({media_val}%). Solo demasiado encharcado."}
-            else:
-                stats['insight_h2o'] = {"tipo": "sucesso", "msg": f"{nome_foco_str} (Tropical): Nível hídrico ideal ({media_val}%). Mantenha o fluxo."}
-                
-        else:
-            if media_val < 30.0:
-                stats['insight_h2o'] = {"tipo": "perigo", "msg": f"{nome_foco_str}: Nível baixo ({media_val}%). Aumente a irrigação para evitar o estresse hídrico."}
-            elif media_val > 70.0:
-                stats['insight_h2o'] = {"tipo": "alerta", "msg": f"{nome_foco_str}: Nível elevado ({media_val}%). Reduza a irrigação para evitar saturação."}
-            else:
-                stats['insight_h2o'] = {"tipo": "sucesso", "msg": f"{nome_foco_str}: Nível hídrico ideal ({media_val}%). Mantenha o ciclo atual."}
+    nome_foco_str = "Planta Monitorada"
+    u_min, u_max = 40.0, 70.0
+
+    if PLANTA_FOCO_ID:
+        p_foco = db.session.get(Hortalica, PLANTA_FOCO_ID)
+        if p_foco:
+            nome_foco_str = p_foco.nome
+            u_min = getattr(p_foco, 'umidade_min', 40.0) or 40.0
+            u_max = getattr(p_foco, 'umidade_max', 70.0) or 70.0
+
+    # Lógica dinâmica baseada na faixa calculada pela IA Gemini
+    if media_val < u_min:
+        stats['insight_h2o'] = {
+            "tipo": "perigo", 
+            "msg": f"{nome_foco_str}: Nível baixo ({media_val}%). Abaixo da faixa ideal da IA ({u_min}% - {u_max}%). Aumente a irrigação."
+        }
+    elif media_val > u_max:
+        stats['insight_h2o'] = {
+            "tipo": "alerta", 
+            "msg": f"{nome_foco_str}: Nível elevado ({media_val}%). Acima da faixa ideal da IA ({u_min}% - {u_max}%). Reduza a irrigação."
+        }
+    else:
+        stats['insight_h2o'] = {
+            "tipo": "sucesso", 
+            "msg": f"{nome_foco_str}: Nível hídrico ideal ({media_val}%). Dentro da faixa recomendada pela IA ({u_min}% a {u_max}%)."
+        }
                 
     stats['total_ativas'] = qtd_ativas
     stats['tempo_medio'] = round(total_ciclos / qtd_ativas, 1) if qtd_ativas > 0 else 0
@@ -407,21 +470,37 @@ def ver_fazenda(id):
 @login_required
 def add_hortalica(fazenda_id):
     nome = request.form.get('nome')
-    data = request.form.get('data_plantio')
-    ciclo = request.form.get('ciclo_estimado')
-    categoria = request.form.get('categoria_hidrica', 'hortalica')
-    
-    if nome and data:
-        nova_hortalica = Hortalica(
-            nome=nome, 
-            data_plantio=data, 
-            ciclo_estimado=int(ciclo or 0), 
-            fazenda_id=fazenda_id,
-            categoria_hidrica=categoria
-        )
-        db.session.add(nova_hortalica)
-        db.session.commit()
-    return redirect(url_for('ver_fazenda', id=fazenda_id))
+    data_plantio_str = request.form.get('data_plantio')
+    ciclo_estimado_str = request.form.get('ciclo_estimado')
+
+    # 1. Consulta a API da Groq para obter os limites de umidade
+    umidade_min, umidade_max = obter_limites_umidade_ia(nome)
+
+    # 2. Converte a data do formulário
+    if data_plantio_str:
+        data_plantio = datetime.strptime(data_plantio_str, '%Y-%m-%d').date()
+    else:
+        data_plantio = datetime.utcnow().date()
+
+    ciclo_val = int(ciclo_estimado_str) if ciclo_estimado_str else 30
+
+    # 3. Salva a nova hortaliça vinculada à fazenda
+    nova_hortalica = Hortalica(
+        nome=nome,
+        data_plantio=data_plantio,
+        ciclo_estimado=ciclo_val,
+        umidade_min=umidade_min,
+        umidade_max=umidade_max,
+        fazenda_id=fazenda_id
+    )
+
+    db.session.add(nova_hortalica)
+    db.session.commit()
+
+    flash(f"Lote de '{nome}' cadastrado com sucesso! Umidade ideal definida via IA: {umidade_min}% a {umidade_max}%.", "success")
+
+    # 4. Redireciona de volta para o dashboard da própria fazenda ativa
+    return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/editar_hortalica/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -431,11 +510,18 @@ def editar_hortalica(id):
         return "Acesso Negado", 403
         
     if request.method == 'POST':
-        h.nome = request.form.get('nome')
+        novo_nome = request.form.get('nome')
+        
+        # Se o nome da planta mudou, reconsulta a IA para recalcular as taxas de humidade
+        if novo_nome and novo_nome != h.nome:
+            h.umidade_min, h.umidade_max = obter_limites_umidade_ia(novo_nome)
+            h.nome = novo_nome
+
         h.data_plantio = request.form.get('data_plantio')
         ciclo = request.form.get('ciclo_estimado')
         h.ciclo_estimado = int(ciclo) if ciclo else 0
         h.categoria_hidrica = request.form.get('categoria_hidrica', 'hortalica')
+        
         db.session.commit()
         return redirect(url_for('ver_fazenda', id=h.fazenda_id))
         
@@ -636,9 +722,12 @@ def dados_grafico(fazenda_id):
     labels_simulador = [r.data_leitura for r in reg_simulador]
     dados_simulador = [r.nivel_porcentagem for r in reg_simulador]
     umidades_plantas = {}
-    
     for h in fazenda.hortalicas:
-        umidades_plantas[h.id] = h.umidade_atual or 0.0
+        umidades_plantas[h.id] = {
+            'atual': h.umidade_atual or 0.0,
+            'min': getattr(h, 'umidade_min', 40.0) or 40.0,
+            'max': getattr(h, 'umidade_max', 70.0) or 70.0
+        }
         
     prob_chuva_agora = CLIMA_ATUAL['prob_chuva']
     vol_chuva_agora = CLIMA_ATUAL['volume_chuva']

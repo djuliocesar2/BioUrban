@@ -94,7 +94,7 @@
     .badge-bom { background: #dcfce7; color: #22c55e; border: 1px solid #86efac; }
     .badge-encharcado { background: #dbeafe; color: #3b82f6; border: 1px solid #93c5fd; }
 
-    /* Estilos do Card Flutuante de Dicas (Estilo Jogo) */
+    /* Estilos do Card Flutuante de Dicas */
     .dica-flutuante {
         position: fixed;
         top: 350px;
@@ -158,41 +158,33 @@
         </div>
     </div>
 
-    <!-- DASHBOARD SUPERIOR (METRICAS + VARIEDADES + IA PRESCRITIVA) -->
-    
-<!-- DASHBOARD SUPERIOR: MÉTRICAS À ESQUERDA E GRÁFICO À DIREITA -->
-<div style="display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 25px; align-items: stretch; margin-bottom: 30px;">
+    <!-- DASHBOARD SUPERIOR: MÉTRICAS À ESQUERDA E GRÁFICO À DIREITA -->
+    <div style="display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 25px; align-items: stretch; margin-bottom: 30px;">
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; min-height: 88px; box-sizing: border-box;">
+                <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Lotes em Cultivo</small>
+                <span style="display: block; font-size: 1.8rem; font-weight: bold; color: var(--primary-green);">{{ stats.total_ativas }}</span>
+            </div>
 
-    <!-- COLUNA ESQUERDA: LOTES E CICLO -->
-    <div style="display: flex; flex-direction: column; gap: 15px;">
-        <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; min-height: 88px; box-sizing: border-box;">
-            <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Lotes em Cultivo</small>
-            <span style="display: block; font-size: 1.8rem; font-weight: bold; color: var(--primary-green);">{{ stats.total_ativas }}</span>
+            <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; min-height: 88px; box-sizing: border-box;">
+                <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Tempo Médio Ciclo</small>
+                <span style="display: block; font-size: 1.8rem; font-weight: bold; color: #2C3E50;">{{ stats.tempo_medio }}d</span>
+            </div>
         </div>
 
-        <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; min-height: 88px; box-sizing: border-box;">
-            <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Tempo Médio Ciclo</small>
-            <span style="display: block; font-size: 1.8rem; font-weight: bold; color: #2C3E50;">{{ stats.tempo_medio }}d</span>
-        </div>
-    </div>
-
-    <!-- COLUNA DIREITA: GRÁFICO DE VARIEDADES -->
-    <div style="background: white; border: 1px solid #eee; padding: 15px; border-radius: 12px; min-width: 0; min-height: 180px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <small style="color: #888; font-weight: 700; font-size: 0.65rem; margin-bottom: 10px; text-transform: uppercase;">Variedades Plantadas</small>
-        <div style="width: 100%; max-width: 130px;">
-            <canvas id="varietyChart"></canvas>
+        <div style="background: white; border: 1px solid #eee; padding: 15px; border-radius: 12px; min-width: 0; min-height: 180px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <small style="color: #888; font-weight: 700; font-size: 0.65rem; margin-bottom: 10px; text-transform: uppercase;">Variedades Plantadas</small>
+            <div style="width: 100%; max-width: 130px;">
+                <canvas id="varietyChart"></canvas>
+            </div>
         </div>
     </div>
 
-</div>
-
-
-    <!-- PAINEL COM 2 COLUNAS: GRÁFICO + IA PREDITIVA INDEPENDENTE EMBAIXO DE CADA UM -->
+    <!-- PAINEL COM 2 COLUNAS: GRÁFICO + IA PREDITIVA -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px;">
         
-        <!-- COLUNA 1: SIMULADOR VIRTUAL + IA DO SIMULADOR -->
+        <!-- COLUNA 1: SIMULADOR VIRTUAL -->
         <div style="display: flex; flex-direction: column; gap: 15px;">
-            <!-- CARD GRÁFICO SIMULADOR -->
             <div style="background: white; border-radius: 12px; border: 1px solid #eee; border-top: 4px solid #3498DB; padding: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h3 style="margin: 0; font-size: 0.85rem; color: #2C3E50; display: flex; align-items: center; gap: 8px;">
@@ -207,7 +199,6 @@
                 </div>
             </div>
 
-            <!-- CARD IA PREDITIVA - SIMULADOR -->
             <div style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 4px solid #3b82f6; padding: 15px; display: flex; flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h3 style="margin: 0; font-size: 0.8rem; color: #1e40af; display: flex; align-items: center; gap: 6px;">
@@ -216,12 +207,8 @@
                     <span class="spinner" id="ia-spinner-sim" style="border-top-color: #3b82f6; width: 10px; height: 10px; display:none;"></span>
                 </div>
                 <div style="background: #f8faf8; border: 1px solid #e5eee8; border-radius: 8px; padding: 10px 12px; margin-bottom: 4px;">
-                    <small style="color: #64748b; font-weight: 700; font-size: 0.65rem; display: block; text-transform: uppercase;">
-                    Média recente do simulador
-                    </small>
-                    <span style="font-size: 1.4rem; font-weight: bold; color: #3498DB;">
-                    {{ stats.media_simulador }}%
-                    </span>
+                    <small style="color: #64748b; font-weight: 700; font-size: 0.65rem; display: block; text-transform: uppercase;">Média recente do simulador</small>
+                    <span style="font-size: 1.4rem; font-weight: bold; color: #3498DB;">{{ stats.media_simulador }}%</span>
                 </div>
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem;">
                     <div>
@@ -236,9 +223,8 @@
             </div>
         </div>
 
-        <!-- COLUNA 2: SENSOR FÍSICO ESP32 + IA DO SENSOR -->
+        <!-- COLUNA 2: SENSOR FÍSICO ESP32 -->
         <div style="display: flex; flex-direction: column; gap: 15px;">
-            <!-- CARD GRÁFICO SENSOR FÍSICO -->
             <div style="background: white; border-radius: 12px; border: 1px solid #eee; border-top: 4px solid #2ECC71; padding: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h3 style="margin: 0; font-size: 0.85rem; color: #2C3E50; display: flex; align-items: center; gap: 8px;">
@@ -258,7 +244,6 @@
                 </div>
             </div>
 
-            <!-- CARD IA PREDITIVA - SENSOR -->
             <div style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 4px solid #8b5cf6; padding: 15px; display: flex; flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h3 style="margin: 0; font-size: 0.8rem; color: #4c1d95; display: flex; align-items: center; gap: 6px;">
@@ -266,15 +251,11 @@
                     </h3>
                     <span class="spinner" id="ia-spinner-sensor" style="border-top-color: #8b5cf6; width: 10px; height: 10px; display:none;"></span>
                 </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem;">
-                        <div style="background: #f0faf4; border: 1px solid #d9f0e2; border-radius: 8px; padding: 10px 12px; margin-bottom: 4px;">
-                            <small style="color: #64748b; font-weight: 700; font-size: 0.65rem; display: block; text-transform: uppercase;">
-                            Média recente do sensor físico
-                            </small>
-                            <span style="font-size: 1.4rem; font-weight: bold; color: #10b981;">
-                            {{ stats.media_sensor }}%
-                            </span>
-                        </div>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem;">
+                    <div style="background: #f0faf4; border: 1px solid #d9f0e2; border-radius: 8px; padding: 10px 12px; margin-bottom: 4px;">
+                        <small style="color: #64748b; font-weight: 700; font-size: 0.65rem; display: block; text-transform: uppercase;">Média recente do sensor físico</small>
+                        <span style="font-size: 1.4rem; font-weight: bold; color: #10b981;">{{ stats.media_sensor }}%</span>
+                    </div>
                     <div>
                         <strong style="color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Diagnóstico:</strong>
                         <p id="txt-diagnostico-ia-sensor" style="margin: 2px 0 0 0; color: #334155; line-height: 1.3;">Aguardando ativação do sensor...</p>
@@ -286,14 +267,11 @@
                 </div>
             </div>
         </div>
-
     </div>
 
-    <!-- PAINEL METEOROLÓGICO (CLIMA SÃO PAULO) -->
+    <!-- PAINEL METEOROLÓGICO -->
     <div style="display: flex; align-items: center; gap: 12px;">
-        <small id="clima-ultima-atualizacao" style="color: #64748b; font-size: 0.8rem;">
-        Última atualização: aguardando...
-        </small>
+        <small id="clima-ultima-atualizacao" style="color: #64748b; font-size: 0.8rem;">Última atualização: aguardando...</small>
     </div>    
     <div style="background: #f8fafc; border-radius: 16px; border-top: 4px solid #10b981; padding: 25px; color: #1f2937; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
@@ -323,46 +301,41 @@
         </div>
     </div>
 
-    <!-- ÁREA DE GESTÃO DE LOTES (FORMULÁRIO + TABELA) -->
+    <!-- ÁREA DE GESTÃO DE LOTES -->
     <div style="display: flex; flex-direction: column; gap: 25px; width: 100%; clear: both;">
         
-       <!-- FORMULÁRIO -->
-        <div style="background: #fdfdfd; padding: 30px; border-radius: 12px; border: 1px solid #f0f0f0;">
-            <h4 style="margin: 0 0 20px 0; font-size: 0.85rem; color: #444; font-weight: 700; text-transform: uppercase;">Registrar Novo Lote de Plantio</h4>
-            <form action="/add_hortalica/{{ fazenda.id }}" method="POST" style="display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 15px; align-items: end; width: 100%;">
-                
-                <div>
-                    <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Espécie / Nome</label>
-                    <input type="text" name="nome" placeholder="Ex: Alface Mimosa" required style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
-                </div>
-
-                <div>
-                    <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Tipo de Planta (Necessidade)</label>
-                    <select name="categoria_hidrica" style="width: 100%; height: 46px; padding: 0 32px 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; background: white; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        <option value="hortalica">Hortaliças Comuns (40%-70%)</option>
-                        <option value="arida">Cactos e Suculentas (10%-30%)</option>
-                        <option value="tropical">Plantas Tropicais (60%-90%)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Data de Plantio</label>
-                    <input type="date" name="data_plantio" required style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
-                </div>
-
-                <div>
-                    <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Ciclo (Dias)</label>
-                    <input type="number" name="ciclo_estimado" placeholder="Ex: 30" style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
-                </div>
-
-                <div>
-                    <button type="submit" style="width: 100%; height: 46px; background: var(--primary-green); border: none; padding: 0 20px; border-radius: 8px; color: white; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;">
-                        <i class="fas fa-plus"></i> Adicionar
-                    </button>
-                </div>
-
-            </form>
+        <!-- FORMULÁRIO -->
+<div style="background: #fdfdfd; padding: 30px; border-radius: 12px; border: 1px solid #f0f0f0;">
+    <h4 style="margin: 0 0 20px 0; font-size: 0.85rem; color: #444; font-weight: 700; text-transform: uppercase;">Registrar Novo Lote de Plantio</h4>
+    <form action="/add_hortalica/{{ fazenda.id }}" method="POST" style="display: grid; grid-template-columns: 3fr 1.5fr 1fr auto; gap: 15px; align-items: end; width: 100%;">
+        
+        <!-- Espécie / Nome -->
+        <div>
+            <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Espécie / Nome</label>
+            <input type="text" name="nome" placeholder="Ex: Alface Mimosa" required style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
         </div>
+
+        <!-- Data de Plantio -->
+        <div>
+            <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Data de Plantio</label>
+            <input type="date" name="data_plantio" required style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+        </div>
+
+        <!-- Ciclo (Dias) -->
+        <div>
+            <label style="font-size: 0.75rem; color: #666; margin-bottom: 8px; display: block; font-weight: 600;">Ciclo (Dias)</label>
+            <input type="number" name="ciclo_estimado" placeholder="Ex: 30" style="width: 100%; height: 46px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+        </div>
+
+        <!-- Botão Adicionar -->
+        <div>
+            <button type="submit" style="width: 100%; height: 46px; background: var(--primary-green); border: none; padding: 0 20px; border-radius: 8px; color: white; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;">
+                <i class="fas fa-plus"></i> Adicionar
+            </button>
+        </div>
+
+    </form>
+</div>
 
         <!-- MONITORAMENTO -->
         <div style="width: 100%;">
@@ -393,7 +366,7 @@
                             <small style="color: #aaa;">Plantado em {{ h.data_plantio }}</small>
                         </td>
                         
-                        <!-- COLUNA: UMIDADE, BOTÃO E TEXTO DE ORIENTAÇÃO -->
+                        <!-- COLUNA: UMIDADE, BOTÃO E LIMITES DINÂMICOS DA IA -->
                         <td style="padding: 15px; min-width: 220px;">
                             {% if h.status != 'Colhido' %}
                                 <div style="margin-bottom: 6px;">
@@ -403,27 +376,32 @@
                                 </div>
                                 
                                 {% set u = h.umidade_atual or 0 %}
-                                {% set cat = h.categoria_hidrica or 'hortalica' %}
+                                {% set u_min = h.umidade_min if h.umidade_min is not none else 40.0 %}
+                                {% set u_max = h.umidade_max if h.umidade_max is not none else 70.0 %}
                                 
                                 {% set badge_class = 'badge-bom' %}
                                 {% set texto_status = 'Umidade Adequada' %}
                                 
-                                {% if cat == 'arida' %}
-                                    {% if u < 5 %}{% set badge_class = 'badge-seco' %}{% set texto_status = 'Aumentar rega (Seco)' %}
-                                    {% elif u > 40 %}{% set badge_class = 'badge-encharcado' %}{% set texto_status = 'Diminuir rega (Excesso)' %}{% endif %}
-                                {% elif cat == 'tropical' %}
-                                    {% if u < 50 %}{% set badge_class = 'badge-seco' %}{% set texto_status = 'Aumentar rega (Seco)' %}
-                                    {% elif u > 90 %}{% set badge_class = 'badge-encharcado' %}{% set texto_status = 'Diminuir rega (Excesso)' %}{% endif %}
-                                {% else %}
-                                    {% if u < 30 %}{% set badge_class = 'badge-seco' %}{% set texto_status = 'Aumentar rega (Seco)' %}
-                                    {% elif u > 70 %}{% set badge_class = 'badge-encharcado' %}{% set texto_status = 'Diminuir rega (Excesso)' %}{% endif %}
+                                {% if u < u_min %}
+                                    {% set badge_class = 'badge-seco' %}
+                                    {% set texto_status = 'Aumentar rega (Seco)' %}
+                                {% elif u > u_max %}
+                                    {% set badge_class = 'badge-encharcado' %}
+                                    {% set texto_status = 'Diminuir rega (Excesso)' %}
                                 {% endif %}
                                 
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <span id="badge-umidade-{{ h.id }}" class="badge-umidade {{ badge_class }}" data-categoria="{{ cat }}">
+                                    <span id="badge-umidade-{{ h.id }}" class="badge-umidade {{ badge_class }}" data-min="{{ u_min }}" data-max="{{ u_max }}">
                                         <i class="fas fa-tint"></i> <span class="valor">{{ "%.1f"|format(u) }}</span>%
                                     </span>
                                     <small id="texto-status-{{ h.id }}" style="font-size: 0.7rem; font-weight: bold; color: #555;">{{ texto_status }}</small>
+                                </div>
+
+                                <!-- BADGE DA FAIXA IDEAL CALCULADA PELA IA -->
+                                <div style="margin-top: 5px;">
+                                    <small id="texto-faixa-ia-{{ h.id }}" style="color: #6d28d9; font-weight: 600; font-size: 0.7rem; background: #f3e8ff; padding: 2px 8px; border-radius: 6px; border: 1px solid #c084fc; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fas fa-robot"></i> Faixa IA: {{ u_min|int }}% a {{ u_max|int }}%
+                                    </small>
                                 </div>
                             {% else %}
                                 <span style="color: #ccc; font-size: 0.8rem;">-</span>
@@ -539,7 +517,6 @@
             });
     }
 
-    // Função robusta e dedicada para carregar os dados meteorológicos imediatamente
     function carregarClimaInicial() {
         fetch(`/api/dados_grafico/${FAZENDA_ID}`)
             .then(response => response.json())
@@ -576,7 +553,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        // Chama a função de clima imediatamente na carga da página para sincronizar com o terminal
         carregarClimaInicial();
 
         fetch('/api/simulador/status')
@@ -653,41 +629,42 @@
                 
                 if (data.umidades_plantas) {
                     Object.keys(data.umidades_plantas).forEach(id => {
-                        const val = data.umidades_plantas[id];
+                        const info = data.umidades_plantas[id];
+        
+                        // Suporta tanto o formato numérico antigo como o novo objeto com min/max
+                        const val = typeof info === 'object' ? info.atual : info;
+                        const uMin = typeof info === 'object' ? info.min : (parseFloat(badge?.getAttribute('data-min')) || 40.0);
+                        const uMax = typeof info === 'object' ? info.max : (parseFloat(badge?.getAttribute('data-max')) || 70.0);
+        
                         const badge = document.getElementById(`badge-umidade-${id}`);
                         const txtStatus = document.getElementById(`texto-status-${id}`);
-                        
+                        const txtFaixaIa = document.getElementById(`texto-faixa-ia-${id}`);
+        
                         if (badge) {
                             badge.querySelector('.valor').innerText = val.toFixed(1);
-                            const categoria = badge.getAttribute('data-categoria');
-                            
+                            badge.setAttribute('data-min', uMin);
+                            badge.setAttribute('data-max', uMax);
+            
                             badge.classList.remove('badge-seco', 'badge-bom', 'badge-encharcado');
                             let mensagem = "Umidade Adequada";
-                            
-                            if (categoria === 'arida') {
-                                if (val < 5) { badge.classList.add('badge-seco'); mensagem = "Aumentar rega (Seco)"; }
-                                else if (val > 40) { badge.classList.add('badge-encharcado'); mensagem = "Diminuir rega (Excesso)"; }
-                                else { badge.classList.add('badge-bom'); mensagem = "Umidade Adequada"; }
-                            } 
-                            else if (categoria === 'tropical') {
-                                if (val < 50) { badge.classList.add('badge-seco'); mensagem = "Aumentar rega (Seco)"; }
-                                else if (val > 90) { badge.classList.add('badge-encharcado'); mensagem = "Diminuir rega (Excesso)"; }
-                                else { badge.classList.add('badge-bom'); mensagem = "Umidade Adequada"; }
-                            } 
-                            else {
-                                if (val < 30) { badge.classList.add('badge-seco'); mensagem = "Aumentar rega (Seco)"; }
-                                else if (val > 70) { badge.classList.add('badge-encharcado'); mensagem = "Diminuir rega (Excesso)"; }
-                                else { badge.classList.add('badge-bom'); mensagem = "Umidade Adequada"; }
+            
+                            if (val < uMin) {
+                                badge.classList.add('badge-seco');
+                                mensagem = "Aumentar rega (Seco)";
+                            } else if (val > uMax) {
+                                badge.classList.add('badge-encharcado');
+                                mensagem = "Diminuir rega (Excesso)";
+                            } else {
+                                badge.classList.add('badge-bom');
+                                mensagem = "Umidade Adequada";
                             }
-                            
-                            if (txtStatus) {
-                                txtStatus.innerText = mensagem;
-                            }
+            
+                            if (txtStatus) txtStatus.innerText = mensagem;
+                            if (txtFaixaIa) txtFaixaIa.innerHTML = `<i class="fas fa-robot"></i> Faixa IA: ${Math.round(uMin)}% a ${Math.round(uMax)}%`;
                         }
                     });
                 }
 
-                // ATUALIZAÇÃO INDEPENDENTE DA IA DO SIMULADOR E DO SENSOR FÍSICO
                 if (data.inteligencia_artificial_simulador) {
                     const elDiagSim = document.getElementById('txt-diagnostico-ia-sim');
                     const elAcaoSim = document.getElementById('txt-acao-ia-sim');
