@@ -8,6 +8,7 @@ import random
 import requests
 import xml.etree.ElementTree as ET
 import unicodedata
+from groq import Groq
 from datetime import datetime
 
 import numpy as np
@@ -106,7 +107,6 @@ CLIMA_ATUAL = {
     "prob_chuva": 0.0,
     "volume_chuva": 0.0,
     "temperatura": 25.0
-
 }
 ID_FAZENDA_PADRAO = 1
 sensor_fisico_ativo = False
@@ -114,58 +114,236 @@ PLANTA_FOCO_ID = None
 FAZENDA_ATUAL_ID = ID_FAZENDA_PADRAO
 
 # ==============================================================================
-# THREAD DE ATUALIZAÇÃO CLIMÁTICA (SÃO PAULO) - COM BUSCA IMEDIATA (INPE)
+# FUNÇÃO DE CONSULTA CLIMÁTICA EM TEMPO REAL (SÃO PAULO)
+# ==============================================================================
+def obter_dados_clima_cptec(lat=-23.5505, lon=-46.6333):
+    """
+    Busca o clima em tempo real para São Paulo via Open-Meteo / CPTEC.
+    Lat/Lon: -23.5505, -46.6333 (São Paulo - SP)
+    """
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+
+    # 1. Tenta Open-Meteo (API aberta em tempo real)
+    try:
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,precipitation,rain&hourly=precipitation_probability&timezone=America%2FSao_Paulo"
+        res = requests.get(url, headers=headers, timeout=5)
+        
+        if res.status_code == 200:
+            data = res.json()
+            temp = round(data['current']['temperature_2m'], 1)
+            chuva_mm = round(data['current']['precipitation'], 1)
+            
+            # Obtém a probabilidade de chuva para a hora atual
+            hourly_prob = data.get('hourly', {}).get('precipitation_probability', [75])
+            prob_chuva = hourly_prob[0] if hourly_prob else 75
+            
+            # Se houver chuva leve/ativa em mm, garante indicação visual de chuva
+            if chuva_mm > 0 and prob_chuva < 50:
+                prob_chuva = 75
+
+            print(f"-> [Clima Realtime] Temp: {temp}°C | Prob: {prob_chuva}% | Precipitação: {chuva_mm} mm/h")
+            return {
+                'temperatura': temp,
+                'probabilidade_chuva': prob_chuva,
+                'chuva_mm': chuva_mm
+            }
+    except Exception as e:
+        print(f"-> [Clima Realtime ERRO]: {e}")
+
+    # 2. Fallback CPTEC com User-Agent configurado
+    try:
+        url_estacao = "http://servicos.cptec.inpe.br/XML/estacao/SBSP/condicaoactual.xml"
+        res_est = requests.get(url_estacao, headers=headers, timeout=4)
+        if res_est.status_code == 200:
+            root = ET.fromstring(res_est.content)
+            temp_elem = root.find('temperatura')
+            temp = float(temp_elem.text) if temp_elem is not None and temp_elem.text else 19.0
+            return {
+                'temperatura': temp,
+                'probabilidade_chuva': 75,
+                'chuva_mm': 1.5
+            }
+    except Exception as e:
+        print(f"-> [CPTEC ERRO]: {e}")
+
+    return {'temperatura': 19.0, 'probabilidade_chuva': 75, 'chuva_mm': 1.5}
+
+# ==============================================================================
+# FUNÇÃO DE ORIENTAÇÃO DE REGA (IA / CLIMA)
+# ==============================================================================
+def gerar_orientacao_rega(hortalica, clima):
+    """
+    Calcula a orientação de rega considerando a umidade atual do solo,
+    a faixa ideal de cada planta (min/max) e a precipitação.
+    """
+    vol_chuva = clima.get('volume_chuva', 0.0) if clima else 0.0
+    prob_chuva = clima.get('prob_chuva', 0) if clima else 0
+    temp = clima.get('temperatura', 22.0) if clima else 22.0
+
+    # Obtém dados específicos da planta
+    u_atual = getattr(hortalica, 'umidade_atual', 0.0) or 0.0
+    u_min = getattr(hortalica, 'umidade_min', 40.0) if getattr(hortalica, 'umidade_min', None) is not None else 40.0
+    u_max = getattr(hortalica, 'umidade_max', 70.0) if getattr(hortalica, 'umidade_max', None) is not None else 70.0
+
+    u_alvo = (u_min + u_max) / 2.0
+    fator_sensibilidade = 50.0 / u_alvo
+
+    # 1. Solo encharcado ou chuva intensa
+    if vol_chuva >= 3.0 or u_atual >= u_max:
+        percentual_ajuste = -100
+        msg_manejo = f"Solo em {u_atual:.1f}% (máx: {u_max:.0f}%). Suspenda 100% a irrigação do lote de {hortalica.nome} hoje."
+        status_cor = "#ef4444"
+        status_texto = "Irrigação Suspensa (100%)"
+
+    # 2. Solo seco (Abaixo da umidade mínima ideal)
+    elif u_atual < u_min:
+        abate_chuva = round(vol_chuva * 30.0 * fator_sensibilidade)
+        if vol_chuva < 0.5 and abate_chuva < 10:
+            percentual_ajuste = 20
+            msg_manejo = f"Solo seco ({u_atual:.1f}%) para a faixa do {hortalica.nome} ({u_min:.0f}%-{u_max:.0f}%). A garoa de {vol_chuva} mm/h é insuficiente: aumente a rega em +20%."
+            status_cor = "#3b82f6"
+            status_texto = "Aumentar Rega (+20%)"
+        else:
+            reducao = max(5, min(100, abate_chuva))
+            percentual_ajuste = -reducao
+            msg_manejo = f"Para o {hortalica.nome} (alvo {u_min:.0f}%-{u_max:.0f}%), a chuva de {vol_chuva} mm/h permite abater {reducao}% da rega."
+            status_cor = "#f59e0b"
+            status_texto = f"Reduzir Rega em {reducao}%"
+
+    # 3. Solo dentro da faixa ideal
+    else:
+        reducao = min(100, round(vol_chuva * 30.0 * fator_sensibilidade))
+        if reducao > 0:
+            percentual_ajuste = -reducao
+            msg_manejo = f"Com solo em {u_atual:.1f}% e chuva de {vol_chuva} mm/h, reduza a rega do {hortalica.nome} em {reducao}%."
+            status_cor = "#f59e0b"
+            status_texto = f"Reduzir Rega em {reducao}%"
+        elif temp >= 28.0:
+            percentual_ajuste = 20
+            msg_manejo = f"Temperatura elevada ({temp}°C). Aumente a rega do {hortalica.nome} em +20% devido ao calor."
+            status_cor = "#3b82f6"
+            status_texto = "Aumentar Rega (+20%)"
+        else:
+            percentual_ajuste = 0
+            msg_manejo = f"Umidade ({u_atual:.1f}%) adequada para {hortalica.nome} ({u_min:.0f}%-{u_max:.0f}%). Mantenha a rega normal."
+            status_cor = "#10b981"
+            status_texto = "Manter Rega Normal (100%)"
+
+    # Alerta Preventivo de Chuva Iminente
+    alerta_preventivo = None
+    if prob_chuva >= 70 and vol_chuva < 0.5:
+        alerta_preventivo = f"Chuva prevista de {prob_chuva}% nas próximas horas. Cancele ou adie a rega do próximo turno para evitar encharcamento das raízes."
+    elif vol_chuva > 2.0:
+        alerta_preventivo = "Solo próximo da saturação. Garanta a drenagem do canteiro para evitar mofo ou podridão radicular."
+
+    return {
+        'percentual_ajuste': percentual_ajuste,
+        'msg_manejo': msg_manejo,
+        'alerta_preventivo': alerta_preventivo,
+        'status_cor': status_cor,
+        'status_texto': status_texto
+    }
+
+    # 2. Alerta Preventivo de Chuva Iminente
+    alerta_preventivo = None
+    if prob_chuva >= 70 and vol_chuva < 0.5:
+        alerta_preventivo = f"Chuva prevista de {prob_chuva}% nas próximas horas. Cancele ou adie a rega do próximo turno para evitar encharcamento das raízes."
+    elif vol_chuva > 2.0:
+        alerta_preventivo = "Solo próximo da saturação pluviométrica. Garanta a drenagem do canteiro para evitar mofo ou podridão radicular."
+
+    return {
+        'percentual_ajuste': percentual_ajuste,
+        'msg_manejo': msg_manejo,
+        'alerta_preventivo': alerta_preventivo,
+        'status_cor': status_cor,
+        'status_texto': status_texto
+    }
+def gerar_parecer_agronomico_llm(hortalica, clima):
+    """
+    Gera parecer agronômico focado apenas na fonte de leitura ativa (Sensor Físico ou Simulador).
+    """
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return "Configure a variável GROQ_API_KEY no ambiente para ativar os pareceres em texto natural."
+
+    # Busca a última leitura registrada para este lote (independente de ser sensor ou simulador)
+    ultimo_registro = RegistroHidrico.query.filter_by(
+        hortalica_id=hortalica.id
+    ).order_by(RegistroHidrico.id.desc()).first()
+
+    # Identifica a fonte ativa e o valor de umidade
+    if ultimo_registro:
+        u_atual = ultimo_registro.nivel_porcentagem or 0.0
+        origem_nome = "Sensor Físico (ESP32)" if ultimo_registro.origem == "sensor" else "Simulador Hídrico"
+    else:
+        u_atual = getattr(hortalica, 'umidade_atual', 0.0) or 0.0
+        origem_nome = "Sistema de Monitoramento"
+
+    u_min = getattr(hortalica, 'umidade_min', 40.0) or 40.0
+    u_max = getattr(hortalica, 'umidade_max', 70.0) or 70.0
+    vol_chuva = clima.get('volume_chuva', 0.0) if clima else 0.0
+    prob_chuva = clima.get('prob_chuva', 0) if clima else 0
+    temp = clima.get('temperatura', 22.0) if clima else 22.0
+
+    prompt = f"""
+    Você é um Engenheiro Agrônomo especialista em agricultura de precisão e irrigação inteligente.
+    Analise os dados em tempo real do lote e elabore um parecer técnico curto, direto e prático (máximo 3 frases) com orientações de manejo.
+
+    Dados do Lote ({hortalica.nome}):
+    - Fonte de Leitura Ativa: {origem_nome}
+    - Umidade Atual do Solo: {u_atual:.1f}%
+    - Faixa ideal de umidade para esta espécie: {u_min:.0f}% a {u_max:.0f}%
+
+    Dados Climáticos Locais:
+    - Temperatura atual: {temp}°C
+    - Precipitação atual: {vol_chuva} mm/h
+    - Probabilidade de chuva: {prob_chuva}%
+
+    Regras Importantes:
+    - Baseie-se APENAS na umidade atual do solo ({u_atual:.1f}%). Não mencione sensores inativos, ausência de outros sensores ou erros de leitura.
+    - Responda em tom profissional, amigável e focado em ação prática de campo.
+    """
+
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="openai/gpt-oss-120b",
+        )
+        return chat_completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Não foi possível obter o parecer da Groq em tempo real: {str(e)}"
+    
+@app.route('/api/parecer/<int:hortalica_id>')
+@login_required
+def api_parecer(hortalica_id):
+    planta = db.session.get(Hortalica, hortalica_id)
+    if not planta:
+        return jsonify({"error": "Lote não encontrado"}), 404
+        
+    parecer = gerar_parecer_agronomico_llm(planta, CLIMA_ATUAL)
+    return jsonify({
+        "nome": planta.nome,
+        "parecer": parecer
+    })
+# ==============================================================================
+# THREAD DE ATUALIZAÇÃO CLIMÁTICA EM SEGUNDO PLANO
 # ==============================================================================
 def atualizar_clima_periodicamente():
-    """Busca a previsão do tempo imediatamente ao iniciar e depois a cada 24 horas."""
+    """Atualiza a variável global CLIMA_ATUAL imediatamente e a cada 15 minutos."""
     global CLIMA_ATUAL
-    
-    def buscar_dados_clima():
-        global CLIMA_ATUAL
-        try:
-            # Endpoint do CPTEC/INPE para São Paulo (Capital = 244)
-            url = "http://servicos.cptec.inpe.br/XML/cidade/244/previsao.xml"
-            resposta = requests.get(url)
-            
-            if resposta.status_code == 200:
-                # Faz a leitura do formato XML nativo do INPE
-                root = ET.fromstring(resposta.content)
-                previsao = root.find('previsao')
-                
-                if previsao is not None:
-                    sigla_tempo = previsao.find('tempo').text
-                    # Correção das tags para o padrão exato do INPE
-                    temp_max = float(previsao.find('maxima').text)
-                    temp_min = float(previsao.find('minima').text)
-                    
-                    # Calcula a temperatura média do dia
-                    CLIMA_ATUAL['temperatura'] = round((temp_max + temp_min) / 2.0, 1)
-                    
-                    # Mapeia as siglas oficiais do CPTEC para o seu painel IoT
-                    if sigla_tempo in ['c', 'ch', 'pt', 'pm', 'pp']:
-                        CLIMA_ATUAL['prob_chuva'] = 85
-                        CLIMA_ATUAL['volume_chuva'] = 12.0
-                    elif sigla_tempo in ['pn', 'pc', 'n']:
-                        CLIMA_ATUAL['prob_chuva'] = 25
-                        CLIMA_ATUAL['volume_chuva'] = 2.0
-                    else:
-                        CLIMA_ATUAL['prob_chuva'] = 0
-                        CLIMA_ATUAL['volume_chuva'] = 0.0
-                        
-                    print(f"[CLIMA INPE - SP] Sigla: {sigla_tempo} | Temp: {CLIMA_ATUAL['temperatura']}°C | Chuva: {CLIMA_ATUAL['prob_chuva']}%")
-            else:
-                print(f"[CLIMA INPE] Serviço indisponível. Erro: {resposta.status_code}")
-                
-        except Exception as e:
-            print(f"[CLIMA INPE] Falha na conexão com o servidor nacional: {e}")
-            
-    # Executa a primeira busca imediatamente na inicialização
-    buscar_dados_clima()
-    
-    # Mantém o loop diário (86400 segundos = 24 horas)
     while True:
-        time.sleep(86400)
-        buscar_dados_clima()
+        dados = obter_dados_clima_cptec()
+        CLIMA_ATUAL["temperatura"] = dados["temperatura"]
+        CLIMA_ATUAL["prob_chuva"] = dados["probabilidade_chuva"]
+        CLIMA_ATUAL["volume_chuva"] = dados["chuva_mm"]
+        
+        # Atualiza a cada 900 segundos (15 minutos)
+        time.sleep(900)
 
 # Iniciar a thread do clima automaticamente ao arrancar o servidor
 thread_clima = threading.Thread(target=atualizar_clima_periodicamente, daemon=True)
@@ -313,7 +491,7 @@ def logout():
 @login_required
 def dashboard():
     minhas_fazendas = Fazenda.query.filter_by(usuario_id=current_user.id).all()
-    return render_template('dashboard.html', fazendas=minhas_fazendas)
+    return render_template('dashboard.html', fazendas=minhas_fazendas, clima=CLIMA_ATUAL)
 
 @app.route('/add_fazenda', methods=['POST'])
 @login_required
@@ -330,7 +508,8 @@ def add_fazenda():
 @login_required
 def ver_fazenda(id):
     fazenda = db.session.get(Fazenda, id)
-    if not fazenda or fazenda.usuario_id != current_user.id: return "Acesso Negado", 403
+    if not fazenda or fazenda.usuario_id != current_user.id: 
+        return "Acesso Negado", 403
     
     global PLANTA_FOCO_ID, FAZENDA_ATUAL_ID
     FAZENDA_ATUAL_ID = id
@@ -339,6 +518,7 @@ def ver_fazenda(id):
     contagem_variedades = {}
     total_ciclos, qtd_ativas = 0, 0
     previsoes_ia = {}
+    
     stats = {
         'total_ativas': 0,
         'tempo_medio': 0,
@@ -346,13 +526,16 @@ def ver_fazenda(id):
         'media_h2o': 0,
         'filtro_atual': filtro,
         'previsoes': {},
-        'insight_h2o': None
+        'insight_h2o': None,
+        'parecer_llm': None
     }
     
     if PLANTA_FOCO_ID is None and len(fazenda.hortalicas) > 0:
         PLANTA_FOCO_ID = fazenda.hortalicas[0].id
         
     for h in fazenda.hortalicas:
+        h.orientacao_ia = gerar_orientacao_rega(h, CLIMA_ATUAL)
+
         if h.status != 'Colhido':
             if h.ciclo_estimado:
                 total_ciclos += h.ciclo_estimado
@@ -364,7 +547,8 @@ def ver_fazenda(id):
                 h.atrasada = passados > (h.ciclo_estimado or 0)
                 h.dias_restantes = max(0, (h.ciclo_estimado or 0) - passados)
             except:
-                h.atrasada = False; h.dias_restantes = 0
+                h.atrasada = False
+                h.dias_restantes = 0
                 
     historico = Hortalica.query.filter_by(fazenda_id=id, status='Colhido').all()
     
@@ -383,7 +567,8 @@ def ver_fazenda(id):
                     model = LinearRegression().fit(X, Y)
                     pred = model.predict([[len(dados_tipo)]])
                     previsoes_ia[tipo] = round(float(pred[0]), 1)
-                except: continue
+                except: 
+                    continue
                 
     if PLANTA_FOCO_ID:
         reg_simulador = RegistroHidrico.query.filter_by(fazenda_id=id, origem="simulador", hortalica_id=PLANTA_FOCO_ID).order_by(RegistroHidrico.id.desc()).limit(15).all()
@@ -402,23 +587,17 @@ def ver_fazenda(id):
     dados_sensor = [r.nivel_porcentagem for r in reg_sensor]
     
     if reg_simulador:
-        stats['media_simulador'] = round(
-            sum(r.nivel_porcentagem for r in reg_simulador) / len(reg_simulador), 1
-    )
+        stats['media_simulador'] = round(sum(r.nivel_porcentagem for r in reg_simulador) / len(reg_simulador), 1)
     else:
         stats['media_simulador'] = 0
 
     if reg_sensor:
-        stats['media_sensor'] = round(
-            sum(r.nivel_porcentagem for r in reg_sensor) / len(reg_sensor), 1
-    )
+        stats['media_sensor'] = round(sum(r.nivel_porcentagem for r in reg_sensor) / len(reg_sensor), 1)
     else:
         stats['media_sensor'] = 0
 
     if todos_recentes:
-        stats['media_h2o'] = round(
-            sum(r.nivel_porcentagem for r in todos_recentes) / len(todos_recentes), 1
-        )
+        stats['media_h2o'] = round(sum(r.nivel_porcentagem for r in todos_recentes) / len(todos_recentes), 1)
         media_val = stats['media_h2o']
     else:
         stats['media_h2o'] = 0
@@ -426,6 +605,7 @@ def ver_fazenda(id):
         
     nome_foco_str = "Planta Monitorada"
     u_min, u_max = 40.0, 70.0
+    parecer_llm = None
 
     if PLANTA_FOCO_ID:
         p_foco = db.session.get(Hortalica, PLANTA_FOCO_ID)
@@ -433,8 +613,10 @@ def ver_fazenda(id):
             nome_foco_str = p_foco.nome
             u_min = getattr(p_foco, 'umidade_min', 40.0) or 40.0
             u_max = getattr(p_foco, 'umidade_max', 70.0) or 70.0
+            
+            # GERA O PARECER DA GROQ PARA A PLANTA EM FOCO
+            parecer_llm = gerar_parecer_agronomico_llm(p_foco, CLIMA_ATUAL)
 
-    # Lógica dinâmica baseada na faixa calculada pela IA Gemini
     if media_val < u_min:
         stats['insight_h2o'] = {
             "tipo": "perigo", 
@@ -454,17 +636,29 @@ def ver_fazenda(id):
     stats['total_ativas'] = qtd_ativas
     stats['tempo_medio'] = round(total_ciclos / qtd_ativas, 1) if qtd_ativas > 0 else 0
     stats['previsoes'] = previsoes_ia
+    stats['parecer_llm'] = parecer_llm
     
-    if filtro == 'Crescendo': hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status != 'Colhido']
-    elif filtro == 'Colhido': hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status == 'Colhido']
-    else: hortalicas_exibidas = fazenda.hortalicas
+    if filtro == 'Crescendo': 
+        hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status != 'Colhido']
+    elif filtro == 'Colhido': 
+        hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status == 'Colhido']
+    else: 
+        hortalicas_exibidas = fazenda.hortalicas
     
-    return render_template('index.html', fazenda=fazenda, hortalicas=hortalicas_exibidas, 
-                           stats=stats, chart_data=contagem_variedades, 
-                           labels_simulador=labels_simulador, dados_simulador=dados_simulador,
-                           labels_sensor=labels_sensor, dados_sensor=dados_sensor, hoje=hoje,
-                           planta_foco_id=PLANTA_FOCO_ID, clima=CLIMA_ATUAL)
-
+    return render_template(
+        'index.html', 
+        fazenda=fazenda, 
+        hortalicas=hortalicas_exibidas, 
+        stats=stats, 
+        chart_data=contagem_variedades, 
+        labels_simulador=labels_simulador, 
+        dados_simulador=dados_simulador,
+        labels_sensor=labels_sensor, 
+        dados_sensor=dados_sensor, 
+        hoje=hoje,
+        planta_foco_id=PLANTA_FOCO_ID, 
+        clima=CLIMA_ATUAL
+    )
 # --- OPERAÇÕES DE CRUD E API ---
 @app.route('/add_hortalica/<int:fazenda_id>', methods=['POST'])
 @login_required

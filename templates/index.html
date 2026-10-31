@@ -270,36 +270,57 @@
     </div>
 
     <!-- PAINEL METEOROLÓGICO -->
-    <div style="display: flex; align-items: center; gap: 12px;">
-        <small id="clima-ultima-atualizacao" style="color: #64748b; font-size: 0.8rem;">Última atualização: aguardando...</small>
-    </div>    
-    <div style="background: #f8fafc; border-radius: 16px; border-top: 4px solid #10b981; padding: 25px; color: #1f2937; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-            <div>
-                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #047857;">
-                    <i class="fas fa-cloud-sun-rain" style="color: #38bdf8;"></i> Condições Meteorológicas e Climáticas (São Paulo - SP)
-                </h3>
-                <small style="color: #94a3b8;">Dados em tempo real integrados via API CPTEC/INPE para o modelo de Regressão Múltipla</small>
-            </div>
-            <span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(56, 189, 248, 0.4);">
-                <i class="fas fa-sync-alt fa-spin"></i> Atualizado a cada hora
-            </span>
+    <!-- CONDIÇÕES METEOROLÓGICAS E CLIMÁTICAS (CPTEC/INPE) -->
+<div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e0e0e0; border-top: 4px solid #00b894; margin-bottom: 25px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div>
+            <h5 style="margin: 0; color: #1b5e20; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-cloud-sun-rain"></i> Condições Meteorológicas e Climáticas (São Paulo - SP)
+            </h5>
+            <small style="color: #777; font-size: 0.75rem;">Dados em tempo real integrados via API CPTEC/INPE para o modelo de Regressão Múltipla</small>
         </div>
-
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; text-align: center;">
-            <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 4px solid #ff6b6b;">
-                <div style="color: #f87171; font-size: 1.5rem; margin-bottom: 5px;"><i class="fas fa-thermometer-half"></i></div>
-                <small style="color: #94a3b8; text-transform: uppercase; font-weight: 700; font-size: 0.7rem;">Temperatura Atual</small>
-                <div id="val-temp" style="font-size: 2.2rem; font-weight: bold; color: #f87171; margin-top: 5px;">{{ "%.1f"|format(clima.temperatura if clima is defined and clima else 25.0) }}°C</div>
-            </div>
-
-            <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 4px solid #38bdf8;">
-                <div style="color: #38bdf8; font-size: 1.5rem; margin-bottom: 5px;"><i class="fas fa-cloud-rain"></i></div>
-                <small style="color: #94a3b8; text-transform: uppercase; font-weight: 700; font-size: 0.7rem;">Probabilidade de Chuva</small>
-                <div id="val-chuva" style="font-size: 2.2rem; font-weight: bold; color: #38bdf8; margin-top: 5px;">{{ "%.0f"|format(clima.prob_chuva if clima is defined and clima else 0) }}%</div>
-            </div>
-        </div>
+        <span style="background: #e3f2fd; color: #1976d2; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+            <i class="fas fa-sync-alt"></i> Atualizado a cada hora
+        </span>
     </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        
+        <!-- CARD 1: TEMPERATURA -->
+        <div style="background: #fdfdfd; padding: 20px; border-radius: 10px; border: 1px solid #eee; border-left: 4px solid #ff5252; text-align: center;">
+            <i class="fas fa-thermometer-half" style="color: #ff5252; font-size: 1.5rem; margin-bottom: 8px;"></i>
+            <div style="font-size: 0.75rem; color: #888; font-weight: 700; text-transform: uppercase;">Temperatura Atual</div>
+            <div style="font-size: 2rem; font-weight: 700; color: #ff5252; margin-top: 5px;">
+                {{ clima.temperatura if clima and clima.temperatura is defined else '22.5' }}°C
+            </div>
+        </div>
+
+        <!-- CARD 2: PROBABILIDADE DE CHUVA -->
+        <div style="background: #fdfdfd; padding: 20px; border-radius: 10px; border: 1px solid #eee; border-left: 4px solid #29b6f6; text-align: center;">
+            <i class="fas fa-cloud-rain" style="color: #29b6f6; font-size: 1.5rem; margin-bottom: 8px;"></i>
+            <div style="font-size: 0.75rem; color: #888; font-weight: 700; text-transform: uppercase;">Probabilidade de Chuva</div>
+            <div style="font-size: 2rem; font-weight: 700; color: #29b6f6; margin-top: 5px;">
+                {{ clima.prob_chuva if clima and clima.prob_chuva is defined else (clima.probabilidade_chuva if clima and clima.probabilidade_chuva is defined else '0') }}%
+            </div>
+        </div>
+
+        <!-- CARD 3: PRECIPITAÇÃO EM MM -->
+        {% set volume = clima.volume_chuva if (clima and clima.volume_chuva is defined) else (clima.chuva_mm if (clima and clima.chuva_mm is defined) else 0.0) %}
+        <div style="background: #fdfdfd; padding: 20px; border-radius: 10px; border: 1px solid #eee; border-left: 4px solid #0288d1; text-align: center;">
+            <i class="fas fa-cloud-showers-heavy" style="color: #0288d1; font-size: 1.5rem; margin-bottom: 8px;"></i>
+            <div style="font-size: 0.75rem; color: #888; font-weight: 700; text-transform: uppercase;">Precipitação Atual</div>
+            <div style="font-size: 2rem; font-weight: 700; color: #0288d1; margin-top: 5px;">
+                {{ volume }} <span style="font-size: 1rem; font-weight: 600;">mm/h</span>
+            </div>
+            {% if volume > 0 %}
+                <small style="color: #2e7d32; font-weight: 700; font-size: 0.75rem; display: block; margin-top: 5px;">🌧️ Precipitação em andamento</small>
+            {% else %}
+                <small style="color: #9e9e9e; font-size: 0.75rem; display: block; margin-top: 5px;">Sem chuva registrada</small>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
 
     <!-- ÁREA DE GESTÃO DE LOTES -->
     <div style="display: flex; flex-direction: column; gap: 25px; width: 100%; clear: both;">
@@ -337,118 +358,176 @@
     </form>
 </div>
 
-        <!-- MONITORAMENTO -->
-        <div style="width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="font-size: 0.9rem; color: #444; font-weight: 700;">Monitoramento de Lotes</h3>
-                <div style="display: flex; gap: 8px;">
-                    <a href="?filtro=Todos" class="filter-btn {{ 'active' if stats.filtro_atual == 'Todos' }}">Todos</a>
-                    <a href="?filtro=Crescendo" class="filter-btn {{ 'active' if stats.filtro_atual == 'Crescendo' }}">Crescendo</a>
-                    <a href="?filtro=Colhido" class="filter-btn {{ 'active' if stats.filtro_atual == 'Colhido' }}">Colhido</a>
-                </div>
-            </div>
-
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="text-align: left; background: #f8faf8; border-bottom: 2px solid #eee;">
-                        <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Lote / Início</th>
-                        <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Umidade Atual / Recomendação</th>
-                        <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Ciclo / IA Preditiva</th>
-                        <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Estado Atual</th>
-                        <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase; text-align: center;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for h in hortalicas %}
-                    <tr id="linha-planta-{{ h.id }}" style="border-bottom: 1px solid #eee;" class="{{ 'row-focada' if h.id == planta_foco_id else '' }}">
-                        <td style="padding: 15px;">
-                            <div style="font-weight: 600; color: #333; font-size: 1.1rem;">{{ h.nome }}</div>
-                            <small style="color: #aaa;">Plantado em {{ h.data_plantio }}</small>
-                        </td>
-                        
-                        <!-- COLUNA: UMIDADE, BOTÃO E LIMITES DINÂMICOS DA IA -->
-                        <td style="padding: 15px; min-width: 220px;">
-                            {% if h.status != 'Colhido' %}
-                                <div style="margin-bottom: 6px;">
-                                    <button id="btn-foco-{{ h.id }}" onclick="focarPlanta({{ h.id }})" class="btn-monitorar {{ 'focado' if h.id == planta_foco_id else '' }}">
-                                        <i class="fas fa-crosshairs"></i> {{ 'Monitorando...' if h.id == planta_foco_id else 'Monitorar Planta' }}
-                                    </button>
-                                </div>
-                                
-                                {% set u = h.umidade_atual or 0 %}
-                                {% set u_min = h.umidade_min if h.umidade_min is not none else 40.0 %}
-                                {% set u_max = h.umidade_max if h.umidade_max is not none else 70.0 %}
-                                
-                                {% set badge_class = 'badge-bom' %}
-                                {% set texto_status = 'Umidade Adequada' %}
-                                
-                                {% if u < u_min %}
-                                    {% set badge_class = 'badge-seco' %}
-                                    {% set texto_status = 'Aumentar rega (Seco)' %}
-                                {% elif u > u_max %}
-                                    {% set badge_class = 'badge-encharcado' %}
-                                    {% set texto_status = 'Diminuir rega (Excesso)' %}
-                                {% endif %}
-                                
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <span id="badge-umidade-{{ h.id }}" class="badge-umidade {{ badge_class }}" data-min="{{ u_min }}" data-max="{{ u_max }}">
-                                        <i class="fas fa-tint"></i> <span class="valor">{{ "%.1f"|format(u) }}</span>%
-                                    </span>
-                                    <small id="texto-status-{{ h.id }}" style="font-size: 0.7rem; font-weight: bold; color: #555;">{{ texto_status }}</small>
-                                </div>
-
-                                <!-- BADGE DA FAIXA IDEAL CALCULADA PELA IA -->
-                                <div style="margin-top: 5px;">
-                                    <small id="texto-faixa-ia-{{ h.id }}" style="color: #6d28d9; font-weight: 600; font-size: 0.7rem; background: #f3e8ff; padding: 2px 8px; border-radius: 6px; border: 1px solid #c084fc; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="fas fa-robot"></i> Faixa IA: {{ u_min|int }}% a {{ u_max|int }}%
-                                    </small>
-                                </div>
-                            {% else %}
-                                <span style="color: #ccc; font-size: 0.8rem;">-</span>
-                            {% endif %}
-                        </td>
-                        
-                        <td style="padding: 15px;">
-                            {% if h.status != 'Colhido' %}
-                                <b style="color: var(--primary-green); font-size: 1rem;">{{ h.data_plantio | dias_cultivo }} dias</b>
-                                <div style="font-size: 0.7rem; margin-top: 3px;">
-                                    {% if h.atrasada %}<span style="color: #e74c3c; font-weight: bold;">⚠️ ATRASADA</span>
-                                    {% else %}<span style="color: #7f8c8d;">Faltam {{ h.dias_restantes }} dias</span>{% endif %}
-                                </div>
-                                {% if stats.previsoes.get(h.nome) %}
-                                <div class="ia-badge"><i class="fas fa-brain"></i> IA sugere: {{ stats.previsoes[h.nome] }} dias</div>
-                                {% endif %}
-                            {% else %}
-                                <span style="color: #ccc; font-size: 0.8rem;">Colhido em {{ h.data_colheita }}</span>
-                            {% endif %}
-                        </td>
-                        <td style="padding: 15px;">
-                            {% if h.status != 'Colhido' %}
-                                <span class="status-badge status-crescendo"><div class="spinner"></div> CRESCENDO</span>
-                            {% else %}
-                                <span class="status-badge status-colhido">COLHIDO</span>
-                            {% endif %}
-                        </td>
-                        <td style="padding: 15px; text-align: center;">
-                            {% if h.status != 'Colhido' %}
-                            <form action="/colher/{{ h.id }}/{{ fazenda.id }}" method="POST" style="display: inline;">
-                                <input type="hidden" name="data_colheita" value="{{ hoje }}">
-                                <button type="submit" title="Colher" style="border:none; background:none; color:var(--primary-green); cursor:pointer; font-size: 1.2rem; margin-right: 12px;">
-                                    <i class="fas fa-check-circle"></i>
-                                </button>
-                            </form>
-                            {% endif %}
-                            
-                            <a href="/editar_hortalica/{{ h.id }}" title="Editar" style="color: #3498DB; font-size: 1.1rem; margin-right: 12px;"><i class="fas fa-edit"></i></a>
-                            
-                            <a href="/deletar/{{ h.id }}/{{ fazenda.id }}" onclick="return confirm('Excluir este lote?')" style="color: #ec7063; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<!-- KPI DE ECONOMIA TOTAL DE ÁGUA (MÉTRICA DE SUSTENTABILIDADE) -->
+{% if stats.total_economia_h2o and stats.total_economia_h2o > 0 %}
+<div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+    <i class="fas fa-faucet-drip" style="color: #059669; font-size: 1.8rem;"></i>
+    <div>
+        <div style="font-size: 0.75rem; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Impacto Sustentável do Manejo (IA)</div>
+        <div style="font-size: 1.3rem; font-weight: 800; color: #065f46; margin-top: 2px;">
+            {{ stats.total_economia_h2o }} Litros <span style="font-size: 0.85rem; font-weight: 500; color: #047857;">de água poupados neste turno de rega</span>
         </div>
     </div>
+</div>
+{% endif %}
+<!-- PARECER AGRONÔMICO ESPECIALISTA (IA / GROQ) -->
+<div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 18px 20px; border-radius: 12px; margin-bottom: 25px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #15803d; text-transform: uppercase;">
+            <i class="fas fa-brain"></i> Parecer Agronômico (IA Especialista)
+        </span>
+        
+        <!-- ID DO BADGE (NOME DA PLANTA) -->
+        <span id="badge-parecer-nome" style="font-size: 0.7rem; font-weight: 600; color: #166534; background: #dcfce7; padding: 2px 8px; border-radius: 10px;">
+            {{ fazenda.hortalicas[0].nome if fazenda.hortalicas else 'Planta Monitorada' }}
+        </span>
+    </div>
+
+    <!-- ID DO TEXTO DO PARECER -->
+    <p id="texto-parecer-llm" style="font-size: 0.85rem; color: #166534; margin: 0; line-height: 1.5;">
+        {{ stats.parecer_llm if stats.parecer_llm else 'Carregando parecer...' }}
+    </p>
+</div>
+<!-- MONITORAMENTO -->
+<div style="width: 100%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="font-size: 0.9rem; color: #444; font-weight: 700;">Monitoramento de Lotes</h3>
+        <div style="display: flex; gap: 8px;">
+            <a href="?filtro=Todos" class="filter-btn {{ 'active' if stats.filtro_atual == 'Todos' }}">Todos</a>
+            <a href="?filtro=Crescendo" class="filter-btn {{ 'active' if stats.filtro_atual == 'Crescendo' }}">Crescendo</a>
+            <a href="?filtro=Colhido" class="filter-btn {{ 'active' if stats.filtro_atual == 'Colhido' }}">Colhido</a>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; background: #f8faf8; border-bottom: 2px solid #eee;">
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Lote / Início</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Umidade Atual / Recomendação</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Ciclo / IA Preditiva</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Estado Atual</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase; text-align: center;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in hortalicas %}
+            <tr id="linha-planta-{{ h.id }}" style="border-bottom: 1px solid #eee;" class="{{ 'row-focada' if h.id == planta_foco_id else '' }}">
+                <td style="padding: 15px;">
+                    <div style="font-weight: 600; color: #333; font-size: 1.1rem;">{{ h.nome }}</div>
+                    <small style="color: #aaa;">Plantado em {{ h.data_plantio }}</small>
+                </td>
+                
+                <!-- COLUNA: UMIDADE, BOTÃO, FAIXA IA E RECOMENDAÇÃO DE MANEJO -->
+                <td style="padding: 15px; min-width: 250px;">
+                    {% if h.status != 'Colhido' %}
+                        <div style="margin-bottom: 6px;">
+                            <button type="button" id="btn-foco-{{ h.id }}" onclick="focarPlanta({{ h.id }})" class="btn-monitorar {{ 'focado' if h.id == planta_foco_id else '' }}">
+                                <i class="fas fa-crosshairs"></i> {{ 'Monitorando...' if h.id == planta_foco_id else 'Monitorar Planta' }}
+                            </button>
+                        </div>
+                        
+                        {% set u = h.umidade_atual or 0 %}
+                        {% set u_min = h.umidade_min if h.umidade_min is not none else 40.0 %}
+                        {% set u_max = h.umidade_max if h.umidade_max is not none else 70.0 %}
+                        
+                        {% set badge_class = 'badge-bom' %}
+                        {% set texto_status = 'Umidade Adequada' %}
+                        
+                        {% if u < u_min %}
+                            {% set badge_class = 'badge-seco' %}
+                            {% set texto_status = 'Aumentar rega (Seco)' %}
+                        {% elif u > u_max %}
+                            {% set badge_class = 'badge-encharcado' %}
+                            {% set texto_status = 'Diminuir rega (Excesso)' %}
+                        {% endif %}
+                        
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span id="badge-umidade-{{ h.id }}" class="badge-umidade {{ badge_class }}" data-min="{{ u_min }}" data-max="{{ u_max }}">
+                                <i class="fas fa-tint"></i> <span class="valor">{{ "%.1f"|format(u) }}</span>%
+                            </span>
+                            <small id="texto-status-{{ h.id }}" style="font-size: 0.7rem; font-weight: bold; color: #555;">{{ texto_status }}</small>
+                        </div>
+
+                        <!-- BADGE DA FAIXA IDEAL CALCULADA PELA IA -->
+                        <div style="margin-top: 5px;">
+                            <small id="texto-faixa-ia-{{ h.id }}" style="color: #6d28d9; font-weight: 600; font-size: 0.7rem; background: #f3e8ff; padding: 2px 8px; border-radius: 6px; border: 1px solid #c084fc; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-robot"></i> Faixa IA: {{ u_min|int }}% a {{ u_max|int }}%
+                            </small>
+                        </div>
+
+                        <!-- RECOMENDAÇÃO DIRETA DE MANEJO E ALERTA PREVENTIVO DA IA -->
+                        {% if h.orientacao_ia %}
+                        <div style="margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+                                <span style="font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+                                    <i class="fas fa-sliders-h" style="color: #0288d1;"></i> Recomendação de Manejo
+                                </span>
+                                <span style="font-size: 0.7rem; font-weight: 700; color: white; background: {{ h.orientacao_ia.status_cor }}; padding: 2px 8px; border-radius: 10px;">
+                                    {{ h.orientacao_ia.status_texto }}
+                                </span>
+                            </div>
+
+                            <p style="font-size: 0.75rem; color: #334155; margin: 0 0 6px 0; line-height: 1.3;">
+                                {{ h.orientacao_ia.msg_manejo }}
+                            </p>
+
+                            {% if h.orientacao_ia.alerta_preventivo %}
+                            <div style="padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; margin-top: 6px; display: flex; align-items: flex-start; gap: 6px;">
+                                <i class="fas fa-exclamation-triangle" style="color: #d97706; margin-top: 2px; font-size: 0.75rem;"></i>
+                                <div style="font-size: 0.7rem; color: #92400e; line-height: 1.2;">
+                                    <strong>Alerta Preventivo:</strong> {{ h.orientacao_ia.alerta_preventivo }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <span style="color: #ccc; font-size: 0.8rem;">-</span>
+                    {% endif %}
+                </td>
+                
+                <td style="padding: 15px;">
+                    {% if h.status != 'Colhido' %}
+                        <b style="color: var(--primary-green); font-size: 1rem;">{{ h.data_plantio | dias_cultivo }} dias</b>
+                        <div style="font-size: 0.7rem; margin-top: 3px;">
+                            {% if h.atrasada %}
+                                <span style="color: #e74c3c; font-weight: bold;">⚠️ ATRASADA</span>
+                            {% else %}
+                                <span style="color: #7f8c8d;">Faltam {{ h.dias_restantes }} dias</span>
+                            {% endif %}
+                        </div>
+                        {% if stats.previsoes.get(h.nome) %}
+                            <div class="ia-badge"><i class="fas fa-brain"></i> IA sugere: {{ stats.previsoes[h.nome] }} dias</div>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: #ccc; font-size: 0.8rem;">Colhido em {{ h.data_colheita }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 15px;">
+                    {% if h.status != 'Colhido' %}
+                        <span class="status-badge status-crescendo"><div class="spinner"></div> CRESCENDO</span>
+                    {% else %}
+                        <span class="status-badge status-colhido">COLHIDO</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 15px; text-align: center;">
+                    {% if h.status != 'Colhido' %}
+                        <form action="/colher/{{ h.id }}/{{ fazenda.id }}" method="POST" style="display: inline;">
+                            <input type="hidden" name="data_colheita" value="{{ hoje }}">
+                            <button type="submit" title="Colher" style="border:none; background:none; color:var(--primary-green); cursor:pointer; font-size: 1.2rem; margin-right: 12px;">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                        </form>
+                    {% endif %}
+                    
+                    <a href="/editar_hortalica/{{ h.id }}" title="Editar" style="color: #3498DB; font-size: 1.1rem; margin-right: 12px;"><i class="fas fa-edit"></i></a>
+                    <a href="/deletar/{{ h.id }}/{{ fazenda.id }}" onclick="return confirm('Excluir este lote?')" style="color: #ec7063; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <script>
@@ -456,6 +535,7 @@
     let PLANTA_FOCO_ATUAL = {{ planta_foco_id if planta_foco_id else 'null' }};
 
     function focarPlanta(hortalicaId) {
+        atualizarParecerIA(hortalicaId);
         fetch(`/api/focar_planta/${hortalicaId}`, { method: 'POST' })
             .then(response => response.json())
             .then(data => {
@@ -516,7 +596,57 @@
                 console.error('Erro ao alterar monitoramento da planta:', error);
             });
     }
+    // FUNÇÃO QUE BUSCA O PARECER DA IA VIA AJAX
+function atualizarParecerIA(hortalicaId) {
+    const elTexto = document.getElementById('texto-parecer-llm');
+    const elBadge = document.getElementById('badge-parecer-nome');
+    
+    // Indicador visual de carregamento
+    if (elTexto) {
+        elTexto.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Consultando especialista IA para este lote...';
+    }
 
+    // Requisição para a rota da Groq no backend
+    fetch(`/api/parecer/${hortalicaId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.parecer && elTexto) {
+                elTexto.innerText = data.parecer;
+            }
+            if (data.nome && elBadge) {
+                elBadge.innerText = data.nome;
+            }
+        })
+        .catch(err => {
+            if (elTexto) {
+                elTexto.innerText = "Não foi possível atualizar o parecer no momento.";
+            }
+        });
+}
+    function atualizarParecerIA(hortalicaId) {
+    const elTexto = document.getElementById('texto-parecer-llm');
+    const elBadge = document.getElementById('badge-parecer-nome');
+    
+    if (elTexto) {
+        elTexto.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando dados climáticos e do solo para este lote...';
+    }
+
+    fetch(`/api/parecer/${hortalicaId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.parecer && elTexto) {
+                elTexto.innerText = data.parecer;
+            }
+            if (data.nome && elBadge) {
+                elBadge.innerText = data.nome;
+            }
+        })
+        .catch(err => {
+            if (elTexto) {
+                elTexto.innerText = "Não foi possível carregar o parecer em tempo real.";
+            }
+        });
+    }
     function carregarClimaInicial() {
         fetch(`/api/dados_grafico/${FAZENDA_ID}`)
             .then(response => response.json())
@@ -696,7 +826,22 @@
             .catch(error => console.error("Erro ao buscar novos dados:", error));
     }
 
-    setInterval(atualizarGraficoRealTime, 2000);
+let contadorCiclosParecer = 0;
+
+setInterval(() => {
+    // 1. Mantém a atualização do gráfico em tempo real a cada 2 segundos
+    atualizarGraficoRealTime();
+
+    // 2. Atualiza o parecer agronômico da IA a cada 10 segundos (5 ciclos de 2s)
+    // Isso evita estourar o limite de requisições da API da Groq
+    contadorCiclosParecer++;
+    if (contadorCiclosParecer >= 5) {
+        if (typeof PLANTA_FOCO_ATUAL !== 'undefined' && PLANTA_FOCO_ATUAL) {
+            atualizarParecerIA(PLANTA_FOCO_ATUAL);
+        }
+        contadorCiclosParecer = 0;
+    }
+}, 2000);
 
     new Chart(document.getElementById('varietyChart'), {
         type: 'doughnut',
