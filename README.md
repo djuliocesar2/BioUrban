@@ -29,31 +29,56 @@ O projeto integra **Python, Flask, SQLite, ESP32 e sensores IoT**, disponibiliza
 
 ## 🧠 Arquitetura do sistema
 
-### Sensor físico
-
+### 1. Fluxo com Sensor Físico (ESP32)
 ```text
-Sensor capacitivo de umidade
-        ↓
-       ESP32
-        ↓
-   USB / Serial
-        ↓
-     Python
-        ↓
-     Flask
-        ↓
-     SQLite
-        ↓
-    Dashboard
-Simulador IoT
++------------------------------+
+| Sensor Capacitivo de Umidade |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|        ESP32 (Hardware)      |
++------------------------------+
+               │
+               ▼ (USB / Serial)
++------------------------------+
+|       Script em Python       |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|        Servidor Flask        |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|    Banco de Dados SQLite     |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|       Dashboard Web          |
++------------------------------+
+2. Fluxo com Simulador IoT
 Plaintext
-    Simulador IoT
-        ↓
-   Aplicação Flask
-        ↓
-     SQLite
-        ↓
-    Dashboard
++------------------------------+
+|        Simulador IoT         |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|       Aplicação Flask        |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|    Banco de Dados SQLite     |
++------------------------------+
+               │
+               ▼
++------------------------------+
+|       Dashboard Web          |
++------------------------------+
 O simulador permite testar o sistema sem a necessidade de manter o ESP32 conectado. O sensor físico e o simulador devem ser utilizados de acordo com os controles e as configurações disponíveis na aplicação.
 
 Tecnologias e responsabilidades
@@ -105,92 +130,84 @@ A comunicação documentada nesta versão utiliza USB/Serial. A comunicação di
 
 Essa funcionalidade deve ser considerada concluída somente após a implementação e a realização dos testes de integração.
 
-🌱 Calibração do sensor
+## 🌱 Calibração do sensor
+
 O sensor capacitivo foi calibrado experimentalmente utilizando diferentes condições de umidade do solo.
 
-Condição observada	Leitura aproximada
-Terra seca	3115
-Terra úmida	2415
-Terra muito úmida	1144
+| Condição observada | Leitura aproximada |
+| :--- | ---: |
+| Terra seca | 3115 |
+| Terra úmida | 2415 |
+| Terra muito úmida | 1144 |
+
 Os valores representam leituras experimentais obtidas durante a calibração do projeto. Eles podem variar de acordo com o sensor, a alimentação elétrica, a composição do solo e as condições do experimento.
 
 A partir das leituras, o firmware pode converter os valores analógicos em uma escala percentual de umidade de 0% a 100%.
 
-Classificação utilizada
-Percentual de umidade	Classificação
-Menor que 30%	SECO
-De 30% a 69%	ADEQUADO
-Igual ou superior a 70%	MUITO ÚMIDO
-A porcentagem representa uma escala experimental de calibração utilizada no projeto. Ela não deve ser interpretada como uma medida universal de umidade volumétrica do solo. Os limites de classificação devem ser ajustados de acordo com a calibração e as necessidades de cada cultivo.
+### Classificação utilizada
 
-🖥️ Tecnologias utilizadas
-Backend
-Python 3;
+| Percentual de umidade | Classificação |
+| :--- | :--- |
+| Menor que 30% | SECO |
+| De 30% a 69% | ADEQUADO |
+| Igual ou superior a 70% | MUITO ÚMIDO |
 
-Flask;
+> A porcentagem representa uma escala experimental de calibração utilizada no projeto. Ela não deve ser interpretada como uma medida universal de umidade volumétrica do solo. Os limites de classificação devem ser ajustados de acordo com a calibração e as necessidades de cada cultivo.
 
-Flask-SQLAlchemy;
+---
 
-Flask-Login;
+## 🖥️ Tecnologias utilizadas
 
-Flask-Migrate;
+### Backend
 
-SQLite;
+- Python 3;
+- Flask;
+- Flask-SQLAlchemy;
+- Flask-Login;
+- Flask-Migrate;
+- SQLite;
+- NumPy;
+- SciPy;
+- Scikit-learn;
+- Requests;
+- PySerial;
+- Python-dotenv;
+- Pandas;
+- Groq.
 
-NumPy;
+### Frontend
 
-SciPy;
+- HTML5;
+- CSS3;
+- JavaScript;
+- Jinja2;
+- Chart.js;
+- Font Awesome.
 
-Scikit-learn;
+### Hardware
 
-Requests;
+- ESP32 ESP-WROOM-32;
+- Sensor capacitivo de umidade do solo;
+- Display OLED SSD1306;
+- Protoboard e cabos de conexão.
 
-PySerial;
+---
 
-Python-dotenv;
+## 🔧 Instalação e execução
 
-Pandas;
+### 1. Pré-requisitos
 
-Groq.
-
-Frontend
-HTML5;
-
-CSS3;
-
-JavaScript;
-
-Jinja2;
-
-Chart.js;
-
-Font Awesome.
-
-Hardware
-ESP32 ESP-WROOM-32;
-
-Sensor capacitivo de umidade do solo;
-
-Display OLED SSD1306;
-
-Protoboard e cabos de conexão.
-
-🔧 Instalação e execução
-1. Pré-requisitos
 Antes de começar, tenha instalado:
 
-Python compatível com as dependências do projeto;
+- Python compatível com as dependências do projeto;
+- Git;
+- Visual Studio Code ou outro editor de código;
+- Arduino IDE, caso utilize o ESP32 físico;
+- Driver USB adequado à placa, se necessário.
 
-Git;
+### 2. Clonar o repositório
 
-Visual Studio Code ou outro editor de código;
-
-Arduino IDE, caso utilize o ESP32 físico;
-
-Driver USB adequado à placa, se necessário.
-
-2. Clonar o repositório
-Bash
+```bash
 git clone [https://github.com/henriquebmr/BioUrban.git](https://github.com/henriquebmr/BioUrban.git)
 Entre na pasta do projeto:
 
