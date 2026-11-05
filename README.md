@@ -130,7 +130,6 @@ O simulador permite testar o sistema sem a necessidade de manter o ESP32 conecta
 
 | Componente | Responsabilidade |
 
-| :--- | :--- |
 
 | ESP32 | Realizar a leitura do sensor físico |
 
@@ -204,7 +203,6 @@ A biblioteca PySerial pode ser utilizada pela aplicação Python para acessar a 
 
 | Parâmetro | Configuração documentada |
 
-| :--- | :--- |
 
 | Porta serial | COM3, como exemplo no Windows |
 
@@ -280,7 +278,6 @@ A partir das leituras, o firmware pode converter os valores analógicos em uma e
 
 | Percentual de umidade | Classificação |
 
-| :--- | :--- |
 
 | Menor que 30% | SECO |
 
